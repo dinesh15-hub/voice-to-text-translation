@@ -1,96 +1,71 @@
 import os
-import speech_recognition as sr
-from deep_translator import GoogleTranslator
-from gtts import gTTS
 import platform
-import subprocess
+from flask import Flask, render_template, request
+import speech_recognition as sr
+from gtts import gTTS
+from deep_translator import GoogleTranslator
 
-# Create the outputs directory if it doesn't exist
-if not os.path.exists("outputs"):
-    os.makedirs("outputs")
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'static/outputs'
+
+# Create output directory if it doesn't exist
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+language_map = {
+    'hindi': 'hi',
+    'telugu': 'te',
+    'tamil': 'ta',
+    'kannada': 'kn',
+    'malayalam': 'ml',
+    'bengali': 'bn',
+    'english': 'en'
+}
 
 def capture_voice_input():
-    """Capture voice input from the microphone."""
     recognizer = sr.Recognizer()
-    microphone = sr.Microphone()
-
-    with microphone as source:
-        print("Adjusting for ambient noise...")
+    with sr.Microphone() as source:
+        print("Listening...")
         recognizer.adjust_for_ambient_noise(source)
-        print("Please speak now...")
         audio = recognizer.listen(source)
 
     try:
-        print("Recognizing speech...")
-        speech_text = recognizer.recognize_google(audio)
-        print(f"Recognized text: {speech_text}")
-        return speech_text
+        print("Recognizing...")
+        return recognizer.recognize_google(audio)
     except sr.UnknownValueError:
-        print("Sorry, I could not understand the audio.")
         return None
     except sr.RequestError:
-        print("Speech recognition service unavailable.")
         return None
 
-def translate_text(text, target_language):
-    """Translate the recognized text to the target language."""
-    translated = GoogleTranslator(target=target_language).translate(text)
-    print(f"Translated text: {translated}")
-    return translated
+def translate_text(text, target_lang):
+    return GoogleTranslator(target=target_lang).translate(text)
 
-def text_to_audio(text, target_language):
-    """Convert translated text into an audio file and save it."""
-    language_map = {
-        'hindi': 'hi',
-        'telugu': 'te',
-        'tamil': 'ta',
-        'kannada': 'kn',
-        'malayalam': 'ml',
-        'bengali': 'bn'
-    }
+def text_to_audio(text, lang_key):
+    file_name = f"translated_{lang_key}.mp3"
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+    tts = gTTS(text=text, lang=lang_key)
+    tts.save(file_path)
+    return file_name
 
-    target_language_code = language_map.get(target_language, 'en')
-    audio_file = f"translated_{target_language_code}.mp3"
+@app.route("/")
+def home():
+    return render_template("index.html")
 
-    try:
-        tts = gTTS(text=text, lang=target_language_code)
-        tts.save(audio_file)
-        print(f"Translated audio saved to {audio_file}")
+@app.route("/translate", methods=["POST"])
+def translate():
+    target_language = request.form["language"].lower()
+    lang_key = language_map.get(target_language, 'en')
 
-        # Auto-play the audio
-        system_platform = platform.system()
-        if system_platform == "Windows":
-            os.startfile(audio_file)
-        elif system_platform == "Darwin":  # macOS
-            subprocess.call(["open", audio_file])
-        else:  # Linux
-            subprocess.call(["xdg-open", audio_file])
+    recognized_text = capture_voice_input()
+    if not recognized_text:
+        return render_template("index.html", error="Could not recognize speech")
 
-    except ValueError as e:
-        print(f"Error: {e}")
+    translated_text = translate_text(recognized_text, target_language)
+    audio_file = text_to_audio(translated_text, lang_key)
 
-
-def play_audio(file_path):
-    """Play the audio file based on the user's OS."""
-    system = platform.system()
-    if system == "Windows":
-        os.system(f'start {file_path}')
-    elif system == "Darwin":  # macOS
-        os.system(f'open {file_path}')
-    else:  # Linux
-        os.system(f'xdg-open {file_path}')
-
-def main():
-    print("🎤 Voice-to-Text Translation Application 🎧\n")
-    print("Supported languages: hindi, telugu, tamil, kannada, malayalam, bengali\n")
-
-    target_language = input("Enter target language (e.g., 'hindi', 'telugu'): ").strip().lower()
-
-    speech_text = capture_voice_input()
-
-    if speech_text:
-        translated_text = translate_text(speech_text, target_language)
-        text_to_audio(translated_text, target_language)
+    return render_template("index.html", 
+                           recognized_text=recognized_text, 
+                           translated_text=translated_text,
+                           audio_file=audio_file)
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎤 Voice-to-Text Translator</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #74ebd5, #acb6e5);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 30px;
+    }
+
+    h1 {
+      color: #fff;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      text-shadow: 1px 1px 5px rgba(0,0,0,0.3);
+    }
+
+    form, .results {
+      background: #ffffffcc;
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    select, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    select {
+      background: #f1f1f1;
+    }
+
+    button {
+      background: linear-gradient(to right, #ff6a00, #ee0979);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    button:hover {
+      transform: scale(1.03);
+    }
+
+    .results p {
+      background: #fefefe;
+      padding: 10px;
+      border-left: 4px solid #6a11cb;
+      margin-top: 10px;
+      border-radius: 5px;
+    }
+
+    audio {
+      margin-top: 15px;
+      width: 100%;
+    }
+
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Speak & Translate</h1>
+
+  <form method="POST" action="/translate">
+    <label for="language">🎯 Choose Target Language:</label>
+    <select name="language" required>
+      <option value="hindi">Hindi</option>
+      <option value="telugu">Telugu</option>
+      <option value="tamil">Tamil</option>
+      <option value="kannada">Kannada</option>
+      <option value="malayalam">Malayalam</option>
+      <option value="bengali">Bengali</option>
+      <option value="english">English</option>
+    </select>
+    <button type="submit">🎙️ Start Speaking</button>
+  </form>
+
+  {% if error %}
+    <p class="error">{{ error }}</p>
+  {% endif %}
+
+  {% if recognized_text %}
+  <div class="results">
+    <h3>📝 Recognized Text:</h3>
+    <p>{{ recognized_text }}</p>
+
+    <h3>🌐 Translated Text:</h3>
+    <p>{{ translated_text }}</p>
+
+    {% if audio_file %}
+    <h3>🔊 Translated Audio:</h3>
+    <audio controls>
+      <source src="{{ url_for('static', filename='outputs/' ~ audio_file) }}" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+    {% endif %}
+  </div>
+  {% endif %}
+</body>
+</html>
